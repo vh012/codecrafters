@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-#[derive(Eq, PartialEq, PartialOrd, Hash, Debug, Clone)]
+#[derive(Eq, PartialEq, PartialOrd, Ord, Hash, Debug, Clone)]
 pub enum RespDataType {
     SimpleStrings(Option<String>),
     BulkStrings(Option<String>),

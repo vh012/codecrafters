@@ -1,4 +1,8 @@
-use crate::{commands::hash_map::HASH_MAP, resp::resp_types::RespDataType};
+use std::time::Duration;
+
+use crate::{
+    commands::hash_map::HASH_MAP, commands::hash_map::Value, resp::resp_types::RespDataType,
+};
 use thiserror::Error;
 
 pub enum Command {
@@ -23,36 +27,76 @@ impl Command {
                                 RespDataType::SimpleStrings(Some("PONG".to_string())),
                             )),
                             "echo" if arr.len() == 2 => Ok(Command::Echo(arr[1].clone())),
-                            "set" if arr.len() == 3 => {
+                            "set" if arr.len() == 3 || arr.len() == 5 => {
                                 let mut map = HASH_MAP.write().await;
 
-                                map.insert(arr[1].clone(), arr[2].clone());
+                                let key = arr[1].clone();
+
+                                if arr.len() == 3 {
+                                    map.insert(key, Value::new(arr[2].clone(), None));
+                                } else {
+                                    match arr[3] {
+                                        RespDataType::BulkStrings(Some(ref str)) => {
+                                            match str.trim().to_lowercase().as_str() {
+                                                op @ "px" | op @ "ex" => {
+                                                    match arr[4] {
+                                                        RespDataType::BulkStrings(Some(ref str)) => {
+                                                            let ttl = str::from_utf8(str.as_bytes())
+                                                                .map_err(|e|
+                                                                    CommandParseError::OptionParseError(
+                                                                        format!("cannot parse ttl value from bytes: {e}").to_string()
+                                                                    )
+                                                                )
+                                                                .and_then(|str|
+                                                                    str::parse::<u64>(str)
+                                                                        .map_err(|e|
+                                                                            CommandParseError::OptionParseError(
+                                                                                format!("cannot parse ttl string into valid u64: {e}").to_string()
+                                                                            )
+                                                                        )
+                                                                ).and_then(|num| Ok(if op == "ex" { Duration::from_secs(num) } else { Duration::from_millis(num) }))?;
+
+                                                            map.insert(key, Value::new(arr[2].clone(), Some(ttl)));
+                                                        },
+                                                        _ => return Err(
+                                                            CommandParseError::OptionParseError(
+                                                                "expected BulkStrings type that represents a numeric argument".to_string()
+                                                            )
+                                                        )
+                                                    }
+                                                },
+                                                _ => return Err(CommandParseError::UnsupportedOptionsError)
+                                            }
+                                        }
+                                        _ => {
+                                            return Err(CommandParseError::UnsupportedOptionsError);
+                                        }
+                                    }
+                                }
 
                                 return Ok(Command::Set(RespDataType::SimpleStrings(Some(
                                     "OK".to_string(),
                                 ))));
                             }
                             "get" if arr.len() == 2 => {
-                                let map = HASH_MAP.read().await;
+                                let key = &arr[1];
 
-                                let value = map.get(&arr[1]);
+                                let mut map = HASH_MAP.write().await;
+
+                                let value = map.get(key);
 
                                 return match value {
                                     Some(value) => {
-                                        let value = match value {
-                                            RespDataType::BulkStrings(_)
-                                            | RespDataType::Arrays(_) => value.clone(),
-                                            RespDataType::SimpleStrings(Some(str)) => {
-                                                RespDataType::BulkStrings(Some(str.clone()))
-                                            }
-                                            RespDataType::SimpleStrings(None) => {
+                                        return Ok(Command::Get(match value.get_data() {
+                                            Some(value) => value,
+                                            None => {
+                                                map.remove(key);
+
                                                 RespDataType::BulkStrings(None)
                                             }
-                                        };
-
-                                        return Ok(Command::Get(value));
+                                        }));
                                     }
-                                    None => Ok(Command::Set(RespDataType::BulkStrings(None))),
+                                    _ => Ok(Command::Get(RespDataType::BulkStrings(None))),
                                 };
                             }
                             _ => Err(CommandParseError::UnsupportedCommandError),
@@ -83,4 +127,8 @@ pub enum CommandParseError {
     RespParseError,
     #[error("unsupported command was provided")]
     UnsupportedCommandError,
+    #[error("unsupported options was provided")]
+    UnsupportedOptionsError,
+    #[error("unable to parse option args: {0}")]
+    OptionParseError(String),
 }
