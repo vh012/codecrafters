@@ -3,7 +3,7 @@ use std::io;
 use bytes::BytesMut;
 use tokio_util::codec::Decoder;
 
-use crate::resp::{parser::RespCodec, parser::rules::parse_rule_factory, resp_types::RespDataType};
+use crate::resp::{parser::RespCodec, parser::rules::parse_rule_factory, types::RespDataType};
 
 impl Decoder for RespCodec {
     type Item = RespDataType;
@@ -18,14 +18,17 @@ impl Decoder for RespCodec {
             self.rule = Some(parse_rule_factory(src[0])?)
         }
 
-        let data = self.rule.as_mut().unwrap().next(src)?;
-
-        if data.is_none() {
+        let Some(rule) = self.rule.as_mut() else {
             return Ok(None);
+        };
+
+        match rule.next(src)? {
+            None => Ok(None),
+            res @ Some(_) => {
+                self.rule = None;
+
+                Ok(res)
+            }
         }
-
-        self.rule = None;
-
-        Ok(data)
     }
 }

@@ -1,7 +1,9 @@
 use std::time::Duration;
 
 use crate::{
-    commands::hash_map::HASH_MAP, commands::hash_map::Value, resp::resp_types::RespDataType,
+    commands::hash_map::{HASH_MAP, Value},
+    config::CONFIG,
+    resp::types::RespDataType,
 };
 use thiserror::Error;
 
@@ -10,6 +12,7 @@ pub enum Command {
     Ping(RespDataType),
     Set(RespDataType),
     Get(RespDataType),
+    ConfigGet(RespDataType),
 }
 
 impl Command {
@@ -23,6 +26,77 @@ impl Command {
                 match arr[0] {
                     RespDataType::BulkStrings(Some(ref str_command)) => {
                         match str_command.trim().to_lowercase().as_str() {
+                            "config" if arr.len() == 3 => {
+                                let subcommand = &arr[1];
+                                let config = CONFIG.read().await;
+
+                                match subcommand {
+                                    RespDataType::BulkStrings(Some(str)) => {
+                                        match str.trim().to_ascii_lowercase().as_str() {
+                                            "get" => match arr[2] {
+                                                RespDataType::BulkStrings(Some(ref str)) => {
+                                                    match str.trim().to_ascii_lowercase().as_str() {
+                                                        "dir" if config.dir.is_some() => {
+                                                            Ok(Command::ConfigGet(
+                                                                RespDataType::Arrays(Some(vec![
+                                                                    RespDataType::BulkStrings(
+                                                                        Some(str.to_string()),
+                                                                    ),
+                                                                    RespDataType::BulkStrings(
+                                                                        Some(
+                                                                            config
+                                                                                .dir
+                                                                                .as_ref()
+                                                                                .unwrap()
+                                                                                .clone(),
+                                                                        ),
+                                                                    ),
+                                                                ])),
+                                                            ))
+                                                        }
+                                                        "dbfilename"
+                                                            if config.dbfilename.is_some() =>
+                                                        {
+                                                            Ok(Command::ConfigGet(
+                                                                RespDataType::Arrays(Some(vec![
+                                                                    RespDataType::BulkStrings(
+                                                                        Some(str.to_string()),
+                                                                    ),
+                                                                    RespDataType::BulkStrings(
+                                                                        Some(
+                                                                            config
+                                                                                .dbfilename
+                                                                                .as_ref()
+                                                                                .unwrap()
+                                                                                .clone(),
+                                                                        ),
+                                                                    ),
+                                                                ])),
+                                                            ))
+                                                        }
+                                                        _ => {
+                                                            return Err(
+                                                                CommandParseError::UnsupportedOptionsError,
+                                                            );
+                                                        }
+                                                    }
+                                                }
+                                                _ => {
+                                                    return Err(
+                                                        CommandParseError::UnsupportedOptionsError,
+                                                    );
+                                                }
+                                            },
+                                            _ => {
+                                                return Err(
+                                                    CommandParseError::UnsupportedOptionsError,
+                                                );
+                                            }
+                                        }
+                                    }
+                                    _ => return Err(CommandParseError::UnsupportedOptionsError),
+                                }
+                            }
                             "ping" if arr.len() == 1 => Ok(Command::Ping(
                                 RespDataType::SimpleStrings(Some("PONG".to_string())),
                             )),
@@ -117,6 +191,7 @@ impl From<Command> for RespDataType {
             Command::Ping(resp) => resp,
             Command::Get(resp) => resp,
             Command::Set(resp) => resp,
+            Command::ConfigGet(resp) => resp,
         }
     }
 }
@@ -131,4 +206,10 @@ pub enum CommandParseError {
     UnsupportedOptionsError,
     #[error("unable to parse option args: {0}")]
     OptionParseError(String),
+}
+
+impl From<CommandParseError> for RespDataType {
+    fn from(value: CommandParseError) -> Self {
+        RespDataType::Errors(value.to_string())
+    }
 }

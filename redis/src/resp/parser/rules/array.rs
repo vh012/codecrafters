@@ -6,18 +6,18 @@ use crate::resp::{
         types::{BoxedRespParseRule, ParseRule, RespParseRule, RespRuleParseError},
         utils::{get_end_seq_len, is_end_seq},
     },
-    resp_types::RespDataType,
+    types::RespDataType,
 };
 
 #[derive(Debug)]
-pub struct ArraysParseRule {
+pub(crate) struct ArraysParseRule {
     values: Vec<RespDataType>,
     size: Option<usize>,
     current_parse_rule: Option<BoxedRespParseRule>,
 }
 
 impl ArraysParseRule {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             values: vec![],
             size: None,

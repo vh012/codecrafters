@@ -2,7 +2,7 @@ use bytes::BytesMut;
 use std::{fmt::Debug, io, num::ParseIntError, str::Utf8Error};
 use thiserror::Error;
 
-use crate::resp::{parser::rules::ParseRuleFactoryError, resp_types::RespDataType};
+use crate::resp::{parser::rules::ParseRuleFactoryError, types::RespDataType};
 
 pub trait ParseRule {
     type Output;
@@ -44,6 +44,6 @@ impl From<ParseRuleFactoryError> for RespRuleParseError {
 
 impl From<RespRuleParseError> for io::Error {
     fn from(error: RespRuleParseError) -> io::Error {
-        io::Error::new(io::ErrorKind::InvalidData, error.to_string())
+        io::Error::new(io::ErrorKind::Other, error.to_string())
     }
 }

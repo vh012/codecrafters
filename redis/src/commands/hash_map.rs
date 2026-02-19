@@ -6,7 +6,7 @@ use std::{
 
 use tokio::sync::RwLock;
 
-use crate::resp::resp_types::RespDataType;
+use crate::resp::types::RespDataType;
 
 pub type Key = RespDataType;
 

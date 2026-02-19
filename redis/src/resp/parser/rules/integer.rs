@@ -9,15 +9,15 @@ use crate::resp::{
 };
 
 #[derive(Debug)]
-pub(crate) struct SimpleStringsParseRule {}
+pub(crate) struct IntegersParseRule {}
 
-impl SimpleStringsParseRule {
+impl IntegersParseRule {
     pub(crate) fn new() -> Self {
         Self {}
     }
 }
 
-impl ParseRule for SimpleStringsParseRule {
+impl ParseRule for IntegersParseRule {
     type Output = RespDataType;
 
     fn next(&mut self, bytes: &mut BytesMut) -> Result<Option<Self::Output>, RespRuleParseError> {
@@ -30,17 +30,17 @@ impl ParseRule for SimpleStringsParseRule {
                 continue;
             }
 
-            let simple_string = Some(RespDataType::SimpleStrings(Some(
-                String::from_utf8_lossy(&bytes[1..idx]).into(),
-            )));
+            let integer = Some(RespDataType::Integers(Some(str::parse::<i64>(
+                str::from_utf8(&bytes[1..idx])?,
+            )?)));
 
             bytes.advance(idx + get_end_seq_len());
 
-            return Ok(simple_string);
+            return Ok(integer);
         }
 
         Ok(None)
     }
 }
 
-impl RespParseRule for SimpleStringsParseRule {}
+impl RespParseRule for IntegersParseRule {}

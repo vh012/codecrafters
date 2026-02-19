@@ -5,16 +5,16 @@ use crate::resp::{
         types::{ParseRule, RespParseRule, RespRuleParseError},
         utils::{get_end_seq_len, is_end_seq},
     },
-    resp_types::RespDataType,
+    types::RespDataType,
 };
 
 #[derive(Debug)]
-pub struct BulkStringsParseRule {
+pub(crate) struct BulkStringsParseRule {
     size: Option<usize>,
 }
 
 impl BulkStringsParseRule {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self { size: None }
     }
 
@@ -64,13 +64,13 @@ impl ParseRule for BulkStringsParseRule {
                 continue;
             }
 
-            let utf8_str = Some(RespDataType::BulkStrings(Some(
-                String::from_utf8_lossy(&bytes[0..idx]).into(),
+            let bulk_string = Some(RespDataType::BulkStrings(Some(
+                String::from_utf8_lossy(&bytes[..idx]).into(),
             )));
 
             bytes.advance(idx + get_end_seq_len());
 
-            return Ok(utf8_str);
+            return Ok(bulk_string);
         }
 
         Ok(None)
