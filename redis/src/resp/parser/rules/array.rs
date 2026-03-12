@@ -38,7 +38,7 @@ impl ArraysParseRule {
         }
 
         if self.current_parse_rule.is_none() {
-            let rule_type_byte = bytes.get(0);
+            let rule_type_byte = bytes.first();
 
             match rule_type_byte {
                 Some(b) => self.current_parse_rule = Some(parse_rule_factory(*b)?),
@@ -65,7 +65,7 @@ impl ArraysParseRule {
         self.size = Some(self.get_size() - 1);
         self.current_parse_rule = None;
 
-        return Ok(Some(rule_parse_result));
+        Ok(Some(rule_parse_result))
     }
 }
 

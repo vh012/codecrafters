@@ -44,6 +44,6 @@ impl From<ParseRuleFactoryError> for RespRuleParseError {
 
 impl From<RespRuleParseError> for io::Error {
     fn from(error: RespRuleParseError) -> io::Error {
-        io::Error::new(io::ErrorKind::Other, error.to_string())
+        io::Error::other(error)
     }
 }

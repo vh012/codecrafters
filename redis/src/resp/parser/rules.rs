@@ -23,7 +23,7 @@ pub(crate) fn parse_rule_factory(byte: u8) -> Result<BoxedRespParseRule, ParseRu
         RespDataType::Arrays(_) => Ok(Box::new(ArraysParseRule::new())),
         RespDataType::Integers(_) => Ok(Box::new(IntegersParseRule::new())),
         _ => Err(ParseRuleFactoryError::UnexpectedRespType(format!(
-            "{byte} RESP type is not supported"
+            "{byte} resp type is not supported"
         ))),
     }
 }
@@ -42,6 +42,6 @@ impl From<RespTypeError> for ParseRuleFactoryError {
 
 impl From<ParseRuleFactoryError> for io::Error {
     fn from(error: ParseRuleFactoryError) -> io::Error {
-        io::Error::new(io::ErrorKind::Other, error.to_string())
+        io::Error::other(error)
     }
 }

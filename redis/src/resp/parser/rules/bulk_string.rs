@@ -49,9 +49,7 @@ impl ParseRule for BulkStringsParseRule {
             }
         }
 
-        let size = self.get_size();
-
-        if size <= 0 {
+        if self.get_size() <= 0 {
             return Ok(Some(RespDataType::BulkStrings(None)));
         }
 

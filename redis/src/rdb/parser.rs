@@ -1,15 +1,19 @@
-use crate::rdb::opcodes::OpCode;
+use crate::commands::hash_map::{Key, Value};
+use std::collections::HashMap;
+use tokio::sync::RwLockWriteGuard;
 
-pub struct RdbCodec {
-    pub current_opcode: Option<OpCode>,
+type Map<'a> = RwLockWriteGuard<'a, HashMap<Key, Value>>;
+
+pub struct RdbCodec<'a> {
     pub is_header_read: bool,
+    pub map: Map<'a>,
 }
 
-impl RdbCodec {
-    pub fn new() -> Self {
+impl<'a> RdbCodec<'a> {
+    pub fn new(hash_map: Map<'a>) -> Self {
         Self {
-            current_opcode: None,
             is_header_read: false,
+            map: hash_map,
         }
     }
 }

@@ -20,34 +20,34 @@ impl Encoder<RespDataType> for RespCodec {
 
         match item {
             RespDataType::Errors(err_msg) => {
-                dst.extend_from_slice(err_msg.as_bytes());
+                dst.extend_from_slice(err_msg.as_ref());
                 dst.extend_from_slice(&END_SEQ);
             }
             RespDataType::Integers(Some(int)) => {
                 if int < 0 {
                     dst.put_u8(b'-');
                 }
-                dst.extend_from_slice(int.to_string().as_bytes());
+                dst.extend_from_slice(int.to_string().as_ref());
                 dst.extend_from_slice(&END_SEQ);
             }
             RespDataType::SimpleStrings(Some(str)) => {
-                dst.extend_from_slice(str.as_bytes());
+                dst.extend_from_slice(str.as_ref());
                 dst.extend_from_slice(&END_SEQ);
             }
             RespDataType::BulkStrings(bulk_string) => match bulk_string {
                 Some(str) => {
-                    dst.extend_from_slice(str.len().to_string().as_bytes());
+                    dst.extend_from_slice(str.len().to_string().as_ref());
                     dst.extend_from_slice(&END_SEQ);
-                    dst.extend_from_slice(str.as_bytes());
+                    dst.extend_from_slice(str.as_ref());
                     dst.extend_from_slice(&END_SEQ);
                 }
                 None => {
-                    dst.extend_from_slice(&[b'-', b'1']);
+                    dst.extend_from_slice(b"-1");
                     dst.extend_from_slice(&END_SEQ);
                 }
             },
             RespDataType::Arrays(Some(arr)) => {
-                dst.extend_from_slice(arr.len().to_string().as_bytes());
+                dst.extend_from_slice(arr.len().to_string().as_ref());
                 dst.extend_from_slice(&END_SEQ);
 
                 for resp_data in arr {

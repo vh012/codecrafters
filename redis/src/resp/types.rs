@@ -47,7 +47,7 @@ impl From<io::Error> for RespDataType {
 
 #[derive(Error, Debug)]
 pub enum RespTypeError {
-    #[error("usupported RESP type provided: {0}")]
+    #[error("unsupported resp type provided: {0}")]
     UnsupportedType(char),
 }
 

@@ -13,6 +13,7 @@ pub enum Command {
     Set(RespDataType),
     Get(RespDataType),
     ConfigGet(RespDataType),
+    Keys(RespDataType),
 }
 
 impl Command {
@@ -26,6 +27,16 @@ impl Command {
                 match arr[0] {
                     RespDataType::BulkStrings(Some(ref str_command)) => {
                         match str_command.trim().to_lowercase().as_str() {
+                            "keys" if arr.len() == 2 => {
+                                let mut keys = vec![];
+                                let map = HASH_MAP.read().await;
+
+                                for k in map.keys() {
+                                    keys.push(k.clone());
+                                }
+
+                                Ok(Command::Keys(RespDataType::Arrays(Some(keys))))
+                            }
                             "config" if arr.len() == 3 => {
                                 let subcommand = &arr[1];
                                 let config = CONFIG.read().await;
@@ -75,26 +86,26 @@ impl Command {
                                                             ))
                                                         }
                                                         _ => {
-                                                            return Err(
+                                                            Err(
                                                                 CommandParseError::UnsupportedOptionsError,
-                                                            );
+                                                            )
                                                         }
                                                     }
                                                 }
                                                 _ => {
-                                                    return Err(
+                                                    Err(
                                                         CommandParseError::UnsupportedOptionsError,
-                                                    );
+                                                    )
                                                 }
                                             },
                                             _ => {
-                                                return Err(
+                                                Err(
                                                     CommandParseError::UnsupportedOptionsError,
-                                                );
+                                                )
                                             }
                                         }
                                     }
-                                    _ => return Err(CommandParseError::UnsupportedOptionsError),
+                                    _ => Err(CommandParseError::UnsupportedOptionsError),
                                 }
                             }
                             "ping" if arr.len() == 1 => Ok(Command::Ping(
@@ -115,7 +126,7 @@ impl Command {
                                                 op @ "px" | op @ "ex" => {
                                                     match arr[4] {
                                                         RespDataType::BulkStrings(Some(ref str)) => {
-                                                            let ttl = str::from_utf8(str.as_bytes())
+                                                            let ttl = str::from_utf8(str.as_ref())
                                                                 .map_err(|e|
                                                                     CommandParseError::OptionParseError(
                                                                         format!("cannot parse ttl value from bytes: {e}").to_string()
@@ -148,9 +159,9 @@ impl Command {
                                     }
                                 }
 
-                                return Ok(Command::Set(RespDataType::SimpleStrings(Some(
+                                Ok(Command::Set(RespDataType::SimpleStrings(Some(
                                     "OK".to_string(),
-                                ))));
+                                ))))
                             }
                             "get" if arr.len() == 2 => {
                                 let key = &arr[1];
@@ -159,19 +170,17 @@ impl Command {
 
                                 let value = map.get(key);
 
-                                return match value {
-                                    Some(value) => {
-                                        return Ok(Command::Get(match value.get_data() {
-                                            Some(value) => value,
-                                            None => {
-                                                map.remove(key);
+                                match value {
+                                    Some(value) => Ok(Command::Get(match value.get_data() {
+                                        Some(value) => value,
+                                        None => {
+                                            map.remove(key);
 
-                                                RespDataType::BulkStrings(None)
-                                            }
-                                        }));
-                                    }
+                                            RespDataType::BulkStrings(None)
+                                        }
+                                    })),
                                     _ => Ok(Command::Get(RespDataType::BulkStrings(None))),
-                                };
+                                }
                             }
                             _ => Err(CommandParseError::UnsupportedCommandError),
                         }
@@ -192,6 +201,7 @@ impl From<Command> for RespDataType {
             Command::Get(resp) => resp,
             Command::Set(resp) => resp,
             Command::ConfigGet(resp) => resp,
+            Command::Keys(resp) => resp,
         }
     }
 }

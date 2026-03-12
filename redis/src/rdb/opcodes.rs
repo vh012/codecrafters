@@ -1,5 +1,9 @@
+use std::fmt::Display;
+use std::io;
+
 use thiserror::Error;
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum OpCode {
     Eof,
     SelectDb,
@@ -11,10 +15,7 @@ pub enum OpCode {
 
 impl OpCode {
     pub fn is_valid_opcode(value: &u8) -> bool {
-        match *value {
-            0xFA..=0xFF => true,
-            _ => false,
-        }
+        matches!(*value, 0xFA..=0xFF)
     }
 }
 
@@ -47,8 +48,27 @@ impl From<OpCode> for u8 {
     }
 }
 
+impl Display for OpCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OpCode::Aux => write!(f, "OpCode::Aux"),
+            OpCode::ResizeDb => write!(f, "OpCode::ResizeDb"),
+            OpCode::ExpireTimeMs => write!(f, "OpCode::ExpireTimeMs"),
+            OpCode::ExpireTime => write!(f, "OpCode::ExpireTime"),
+            OpCode::SelectDb => write!(f, "OpCode::SelectDb "),
+            OpCode::Eof => write!(f, "OpCode::Eof"),
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum OpCodeParseError {
     #[error("unexpected opcode: {0}")]
     UnexpectedOpCode(u8),
+}
+
+impl From<OpCodeParseError> for io::Error {
+    fn from(error: OpCodeParseError) -> io::Error {
+        io::Error::other(error)
+    }
 }
