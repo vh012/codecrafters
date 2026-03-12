@@ -1,2 +1,2 @@
 pub(crate) mod commands;
-mod hash_map;
+pub(crate) mod hash_map;

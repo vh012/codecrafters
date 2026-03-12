@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     sync::LazyLock,
-    time::{Duration, SystemTime},
+    time::{Duration, Instant},
 };
 
 use tokio::sync::RwLock;
@@ -14,7 +14,7 @@ pub type Key = RespDataType;
 pub struct Value {
     data: RespDataType,
     ttl: Option<Duration>,
-    created_at: SystemTime,
+    created_at: Instant,
 }
 
 impl Value {
@@ -22,22 +22,19 @@ impl Value {
         Self {
             data,
             ttl,
-            created_at: SystemTime::now(),
+            created_at: Instant::now(),
         }
     }
 
     pub fn get_data(&self) -> Option<RespDataType> {
         match self.ttl {
-            Some(ref ttl) => match self.created_at.elapsed() {
-                Ok(elapsed) => {
-                    if elapsed.as_millis() > ttl.as_millis() {
-                        None
-                    } else {
-                        Some(self.data.clone())
-                    }
+            Some(ref ttl) => {
+                if self.created_at.elapsed() > *ttl {
+                    None
+                } else {
+                    Some(self.data.clone())
                 }
-                Err(_) => None,
-            },
+            }
             None => Some(self.data.clone()),
         }
     }
