@@ -2,5 +2,5 @@
 
 - [x] DNS
 - [x] Redis
-- [ ] Kafka
+- [ ] Kafka (In progress)
 
