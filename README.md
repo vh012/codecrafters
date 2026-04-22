@@ -1,6 +1,6 @@
 # Solutions for [CodeCrafters](https://app.codecrafters.io)
 
 - [x] DNS
-- [ ] Redis (In Progress)
+- [X] Redis (In Progress)
 - [ ] Kafka
 
