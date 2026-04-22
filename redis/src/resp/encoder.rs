@@ -3,38 +3,38 @@ use std::io::{self, ErrorKind};
 use bytes::{BufMut, BytesMut};
 use tokio_util::codec::Encoder;
 
-use crate::resp::{constants::END_SEQ, parser::RespCodec, types::RespDataType};
+use crate::resp::{constants::END_SEQ, parser::RespCodec, types::RespType};
 
-impl Encoder<RespDataType> for RespCodec {
+impl Encoder<RespType> for RespCodec {
     type Error = io::Error;
 
-    fn encode(&mut self, item: RespDataType, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, item: RespType, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let resp_byte_type = u8::try_from(&item).map_err(|e| {
             io::Error::new(
                 ErrorKind::InvalidInput,
-                format!("unable to cast RespDataType into u8: {e}"),
+                format!("unable to cast RespType into u8: {e}"),
             )
         })?;
 
         dst.put_u8(resp_byte_type);
 
         match item {
-            RespDataType::Errors(err_msg) => {
+            RespType::RError(err_msg) => {
                 dst.extend_from_slice(err_msg.as_ref());
                 dst.extend_from_slice(&END_SEQ);
             }
-            RespDataType::Integers(Some(int)) => {
+            RespType::Integer(Some(int)) => {
                 if int < 0 {
                     dst.put_u8(b'-');
                 }
                 dst.extend_from_slice(int.to_string().as_ref());
                 dst.extend_from_slice(&END_SEQ);
             }
-            RespDataType::SimpleStrings(Some(str)) => {
-                dst.extend_from_slice(str.as_ref());
+            RespType::SimpleString(Some(simple_str)) => {
+                dst.extend_from_slice(simple_str.as_ref());
                 dst.extend_from_slice(&END_SEQ);
             }
-            RespDataType::BulkStrings(bulk_string) => match bulk_string {
+            RespType::BulkString(bulk_str) => match bulk_str {
                 Some(str) => {
                     dst.extend_from_slice(str.len().to_string().as_ref());
                     dst.extend_from_slice(&END_SEQ);
@@ -46,12 +46,12 @@ impl Encoder<RespDataType> for RespCodec {
                     dst.extend_from_slice(&END_SEQ);
                 }
             },
-            RespDataType::Arrays(Some(arr)) => {
+            RespType::Array(Some(arr)) => {
                 dst.extend_from_slice(arr.len().to_string().as_ref());
                 dst.extend_from_slice(&END_SEQ);
 
-                for resp_data in arr {
-                    self.encode(resp_data, dst)?;
+                for nested_resp in arr {
+                    self.encode(nested_resp, dst)?;
                 }
             }
             _ => {

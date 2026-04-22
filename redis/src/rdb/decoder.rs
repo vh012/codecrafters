@@ -1,7 +1,7 @@
 use crate::commands::hash_map::Value;
 use crate::rdb::types::RdbType;
 use crate::rdb::{constants::HEADER_STR, opcodes::OpCode, parser::RdbCodec};
-use crate::resp::types::RespDataType;
+use crate::resp::types::RespType;
 use bytes::{Buf, BytesMut};
 use std::io::{self, Read};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -11,6 +11,21 @@ use tokio_util::codec::Decoder;
 enum LenEncodingType {
     String(usize),
     StringInteger(usize),
+}
+
+#[derive(Debug)]
+enum LenEncodingValue {
+    String(BytesMut),
+    StringInteger(String),
+}
+
+impl From<LenEncodingValue> for RespType {
+    fn from(value: LenEncodingValue) -> Self {
+        match value {
+            LenEncodingValue::String(v) => RespType::BulkString(Some(v)),
+            LenEncodingValue::StringInteger(v) => RespType::BulkString(Some(v.as_bytes().into())),
+        }
+    }
 }
 
 fn parse_len_encoding(bytes: &mut BytesMut) -> Option<LenEncodingType> {
@@ -73,21 +88,26 @@ fn parse_len_encoding(bytes: &mut BytesMut) -> Option<LenEncodingType> {
     }
 }
 
-fn decode_single_value(bytes: &mut BytesMut) -> Option<String> {
+fn decode_single_value(bytes: &mut BytesMut) -> Option<LenEncodingValue> {
     let len_encoding_type = parse_len_encoding(bytes)?;
 
     match len_encoding_type {
         LenEncodingType::String(str_len) => {
-            let mut buf = vec![0; str_len];
+            let mut buf = BytesMut::with_capacity(str_len);
+            buf.fill_with(|| 0);
 
             bytes.reader().read_exact(buf.as_mut()).ok()?;
 
-            Some(String::from_utf8_lossy(&buf).into())
+            Some(LenEncodingValue::String(buf))
         }
         LenEncodingType::StringInteger(int_len) => match int_len {
-            1 => Some(bytes.get_i8().to_string()),
-            2 => Some(bytes.get_i16_le().to_string()),
-            4 => Some(bytes.get_i32_le().to_string()),
+            1 => Some(LenEncodingValue::StringInteger(bytes.get_i8().to_string())),
+            2 => Some(LenEncodingValue::StringInteger(
+                bytes.get_i16_le().to_string(),
+            )),
+            4 => Some(LenEncodingValue::StringInteger(
+                bytes.get_i32_le().to_string(),
+            )),
             _ => None,
         },
     }
@@ -120,7 +140,7 @@ impl<'a> Decoder for RdbCodec<'a> {
                                 if let (Some(key), Some(value)) =
                                     (decode_single_value(src), decode_single_value(src))
                                 {
-                                    println!("OpCode::Aux: key {key} - value {value}");
+                                    println!("OpCode::Aux: key {key:?} - value {value:?}");
                                 } else {
                                     return Err(io::Error::other(format!(
                                         "unable to parse {opcode}"
@@ -162,9 +182,9 @@ impl<'a> Decoder for RdbCodec<'a> {
 
                                             if Duration::from_millis(expire_time_ms).gt(&now) {
                                                 self.map.insert(
-                                                    RespDataType::BulkStrings(Some(key)),
+                                                    key.into(),
                                                     Value::new(
-                                                        RespDataType::BulkStrings(Some(value)),
+                                                        value.into(),
                                                         Some(
                                                             Duration::from_millis(expire_time_ms)
                                                                 - now,
@@ -197,19 +217,10 @@ impl<'a> Decoder for RdbCodec<'a> {
                         RdbType::String => {
                             src.advance(1);
 
-                            while let Some(byte) = src.first()
-                                && *byte == 0
-                            {
-                                src.advance(1);
-                            }
-
                             if let (Some(key), Some(value)) =
                                 (decode_single_value(src), decode_single_value(src))
                             {
-                                self.map.insert(
-                                    RespDataType::BulkStrings(Some(key)),
-                                    Value::new(RespDataType::BulkStrings(Some(value)), None),
-                                );
+                                self.map.insert(key.into(), Value::new(value.into(), None));
                             } else {
                                 return Err(io::Error::other(format!(
                                     "unable to parse {rdb_type}"

@@ -2,7 +2,7 @@ use bytes::BytesMut;
 use std::{fmt::Debug, io, num::ParseIntError, str::Utf8Error};
 use thiserror::Error;
 
-use crate::resp::{parser::rules::ParseRuleFactoryError, types::RespDataType};
+use crate::resp::{parser::rules::ParseRuleFactoryError, types::RespType};
 
 pub trait ParseRule {
     type Output;
@@ -10,7 +10,7 @@ pub trait ParseRule {
     fn next(&mut self, bytes: &mut BytesMut) -> Result<Option<Self::Output>, RespRuleParseError>;
 }
 
-pub trait RespParseRule: ParseRule<Output = RespDataType> + Send + Debug {}
+pub trait RespParseRule: ParseRule<Output = RespType> + Send + Debug {}
 
 pub type BoxedRespParseRule = Box<dyn RespParseRule>;
 

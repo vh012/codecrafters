@@ -14,21 +14,21 @@ use clap::Parser;
 
 use crate::commands::hash_map::HASH_MAP;
 use crate::{
-    commands::commands::Command,
+    commands::processor::Processor,
     config::CONFIG,
     rdb::parser::RdbCodec,
-    resp::{parser::RespCodec, types::RespDataType},
+    resp::{parser::RespCodec, types::RespType},
 };
 
 #[derive(Parser, Debug)]
 struct Args {
-    #[arg(short, long)]
+    #[arg(long)]
     dir: Option<String>,
-    #[arg(short, long)]
+    #[arg(long)]
     dbfilename: Option<String>,
 }
 
-async fn send_frame(framed: &mut Framed<TcpStream, RespCodec>, resp: RespDataType) {
+async fn send_frame(framed: &mut Framed<TcpStream, RespCodec>, resp: RespType) {
     if let Err(e) = framed.send(resp).await {
         eprintln!("cannot send frame: {e}");
     }
@@ -40,10 +40,10 @@ async fn handle_tcp_stream(stream: TcpStream) {
     while let Some(parse_result) = framed.next().await {
         match parse_result {
             Ok(resp_value) => {
-                let maybe_cmd = Command::try_perform(resp_value.clone()).await;
+                let maybe_cmd = Processor::exec_from_resp(resp_value.clone()).await;
 
                 match maybe_cmd {
-                    Ok(cmd) => send_frame(&mut framed, cmd.into()).await,
+                    Ok(cmd) => send_frame(&mut framed, cmd).await,
                     Err(e) => {
                         eprintln!(
                             "cannot parse command from valid resp type: {resp_value:?}: {e:?}"
@@ -80,18 +80,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
     let mut config = CONFIG.write().await;
-    let commands_hash_map = HASH_MAP.write().await;
 
     config.dir = args.dir;
     config.dbfilename = args.dbfilename;
 
     let (Some(dir), Some(dbfilename)) = (&config.dir, &config.dbfilename) else {
+        drop(config);
+
         return run_infinite_listener().await;
     };
 
     let rdb_path = Path::new(&dir).join(dbfilename);
 
     if rdb_path.exists() {
+        let commands_hash_map = HASH_MAP.write().await;
+
         let rdb_file_stream = File::open(rdb_path).await?;
 
         let rdb_codec = RdbCodec::new(commands_hash_map);

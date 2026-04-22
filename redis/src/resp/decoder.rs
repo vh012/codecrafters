@@ -3,10 +3,10 @@ use std::io;
 use bytes::BytesMut;
 use tokio_util::codec::Decoder;
 
-use crate::resp::{parser::RespCodec, parser::rules::parse_rule_factory, types::RespDataType};
+use crate::resp::{parser::RespCodec, parser::rules::parse_rule_factory, types::RespType};
 
 impl Decoder for RespCodec {
-    type Item = RespDataType;
+    type Item = RespType;
     type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {

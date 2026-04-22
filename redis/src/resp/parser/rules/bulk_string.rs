@@ -5,7 +5,7 @@ use crate::resp::{
         types::{ParseRule, RespParseRule, RespRuleParseError},
         utils::{get_end_seq_len, is_end_seq},
     },
-    types::RespDataType,
+    types::RespType,
 };
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ impl BulkStringsParseRule {
 }
 
 impl ParseRule for BulkStringsParseRule {
-    type Output = RespDataType;
+    type Output = RespType;
 
     fn next(&mut self, bytes: &mut BytesMut) -> Result<Option<Self::Output>, RespRuleParseError> {
         if self.size.is_none() {
@@ -49,8 +49,8 @@ impl ParseRule for BulkStringsParseRule {
             }
         }
 
-        if self.get_size() <= 0 {
-            return Ok(Some(RespDataType::BulkStrings(None)));
+        if self.get_size() == 0 {
+            return Ok(Some(RespType::BulkString(None)));
         }
 
         if bytes.len() < 2 {
@@ -62,9 +62,7 @@ impl ParseRule for BulkStringsParseRule {
                 continue;
             }
 
-            let bulk_string = Some(RespDataType::BulkStrings(Some(
-                String::from_utf8_lossy(&bytes[..idx]).into(),
-            )));
+            let bulk_string = Some(RespType::BulkString(Some(bytes[..idx].into())));
 
             bytes.advance(idx + get_end_seq_len());
 

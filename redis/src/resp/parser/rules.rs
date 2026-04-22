@@ -5,7 +5,7 @@ use crate::resp::{
         array::ArraysParseRule, bulk_string::BulkStringsParseRule, integer::IntegersParseRule,
         simple_string::SimpleStringsParseRule, types::BoxedRespParseRule,
     },
-    types::{RespDataType, RespTypeError},
+    types::{RespType, RespTypeError},
 };
 use thiserror::Error;
 
@@ -17,11 +17,11 @@ pub(crate) mod types;
 mod utils;
 
 pub(crate) fn parse_rule_factory(byte: u8) -> Result<BoxedRespParseRule, ParseRuleFactoryError> {
-    match RespDataType::try_from(byte)? {
-        RespDataType::SimpleStrings(_) => Ok(Box::new(SimpleStringsParseRule::new())),
-        RespDataType::BulkStrings(_) => Ok(Box::new(BulkStringsParseRule::new())),
-        RespDataType::Arrays(_) => Ok(Box::new(ArraysParseRule::new())),
-        RespDataType::Integers(_) => Ok(Box::new(IntegersParseRule::new())),
+    match RespType::try_from(byte)? {
+        RespType::SimpleString(_) => Ok(Box::new(SimpleStringsParseRule::new())),
+        RespType::BulkString(_) => Ok(Box::new(BulkStringsParseRule::new())),
+        RespType::Array(_) => Ok(Box::new(ArraysParseRule::new())),
+        RespType::Integer(_) => Ok(Box::new(IntegersParseRule::new())),
         _ => Err(ParseRuleFactoryError::UnexpectedRespType(format!(
             "{byte} resp type is not supported"
         ))),

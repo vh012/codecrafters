@@ -1,47 +1,48 @@
 use std::{io, num::ParseIntError};
 
+use bytes::BytesMut;
 use thiserror::Error;
 
 #[derive(Eq, PartialEq, PartialOrd, Ord, Hash, Debug, Clone)]
-pub enum RespDataType {
-    SimpleStrings(Option<String>),
-    BulkStrings(Option<String>),
-    Arrays(Option<Vec<RespDataType>>),
-    Integers(Option<i64>),
-    Errors(String),
+pub enum RespType {
+    SimpleString(Option<BytesMut>),
+    BulkString(Option<BytesMut>),
+    Array(Option<Vec<RespType>>),
+    Integer(Option<i64>),
+    RError(String),
 }
 
-impl TryFrom<u8> for RespDataType {
+impl TryFrom<u8> for RespType {
     type Error = RespTypeError;
 
     fn try_from(byte: u8) -> Result<Self, Self::Error> {
         match byte {
-            b'+' => Ok(Self::SimpleStrings(None)),
-            b'$' => Ok(Self::BulkStrings(None)),
-            b'*' => Ok(Self::Arrays(None)),
-            b':' => Ok(Self::Integers(None)),
+            b'+' => Ok(Self::SimpleString(None)),
+            b'$' => Ok(Self::BulkString(None)),
+            b'*' => Ok(Self::Array(None)),
+            b':' => Ok(Self::Integer(None)),
             _ => Err(RespTypeError::UnsupportedType(byte as char)),
         }
     }
 }
 
-impl TryFrom<&RespDataType> for u8 {
+impl TryFrom<&RespType> for u8 {
     type Error = ParseIntError;
 
-    fn try_from(resp: &RespDataType) -> Result<u8, Self::Error> {
+    fn try_from(resp: &RespType) -> Result<u8, Self::Error> {
         Ok(match resp {
-            RespDataType::SimpleStrings(_) => b'+',
-            RespDataType::BulkStrings(_) => b'$',
-            RespDataType::Arrays(_) => b'*',
-            RespDataType::Integers(_) => b':',
-            RespDataType::Errors(_) => b'-',
+            RespType::SimpleString(_) => b'+',
+            RespType::BulkString(_) => b'$',
+            RespType::Array(_) => b'*',
+            RespType::Integer(_) => b':',
+            RespType::RError(_) => b'-',
         })
     }
 }
 
-impl From<io::Error> for RespDataType {
+impl From<io::Error> for RespType {
     fn from(value: io::Error) -> Self {
-        RespDataType::Errors(value.to_string())
+        RespType::RError(value.to_string())
     }
 }
 
@@ -51,8 +52,8 @@ pub enum RespTypeError {
     UnsupportedType(char),
 }
 
-impl From<RespTypeError> for RespDataType {
+impl From<RespTypeError> for RespType {
     fn from(value: RespTypeError) -> Self {
-        RespDataType::Errors(value.to_string())
+        RespType::RError(value.to_string())
     }
 }

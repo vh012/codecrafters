@@ -5,7 +5,7 @@ use crate::resp::{
         types::{ParseRule, RespParseRule, RespRuleParseError},
         utils::{get_end_seq_len, is_end_seq},
     },
-    types::RespDataType,
+    types::RespType,
 };
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ impl SimpleStringsParseRule {
 }
 
 impl ParseRule for SimpleStringsParseRule {
-    type Output = RespDataType;
+    type Output = RespType;
 
     fn next(&mut self, bytes: &mut BytesMut) -> Result<Option<Self::Output>, RespRuleParseError> {
         if bytes.len() < 4 {
@@ -30,9 +30,7 @@ impl ParseRule for SimpleStringsParseRule {
                 continue;
             }
 
-            let simple_string = Some(RespDataType::SimpleStrings(Some(
-                String::from_utf8_lossy(&bytes[1..idx]).into(),
-            )));
+            let simple_string = Some(RespType::SimpleString(Some(bytes[1..idx].into())));
 
             bytes.advance(idx + get_end_seq_len());
 

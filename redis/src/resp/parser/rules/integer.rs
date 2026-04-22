@@ -5,7 +5,7 @@ use crate::resp::{
         types::{ParseRule, RespParseRule, RespRuleParseError},
         utils::{get_end_seq_len, is_end_seq},
     },
-    types::RespDataType,
+    types::RespType,
 };
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ impl IntegersParseRule {
 }
 
 impl ParseRule for IntegersParseRule {
-    type Output = RespDataType;
+    type Output = RespType;
 
     fn next(&mut self, bytes: &mut BytesMut) -> Result<Option<Self::Output>, RespRuleParseError> {
         if bytes.len() < 4 {
@@ -30,9 +30,9 @@ impl ParseRule for IntegersParseRule {
                 continue;
             }
 
-            let integer = Some(RespDataType::Integers(Some(str::parse::<i64>(
-                str::from_utf8(&bytes[1..idx])?,
-            )?)));
+            let integer = Some(RespType::Integer(Some(str::parse::<i64>(str::from_utf8(
+                &bytes[1..idx],
+            )?)?)));
 
             bytes.advance(idx + get_end_seq_len());
 

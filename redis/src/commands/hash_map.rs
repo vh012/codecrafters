@@ -6,19 +6,19 @@ use std::{
 
 use tokio::sync::RwLock;
 
-use crate::resp::types::RespDataType;
+use crate::resp::types::RespType;
 
-pub type Key = RespDataType;
+pub type Key = RespType;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Value {
-    data: RespDataType,
+    data: RespType,
     ttl: Option<Duration>,
     created_at: Instant,
 }
 
 impl Value {
-    pub fn new(data: RespDataType, ttl: Option<Duration>) -> Self {
+    pub fn new(data: RespType, ttl: Option<Duration>) -> Self {
         Self {
             data,
             ttl,
@@ -26,7 +26,7 @@ impl Value {
         }
     }
 
-    pub fn get_data(&self) -> Option<RespDataType> {
+    pub fn get_data(&self) -> Option<RespType> {
         match self.ttl {
             Some(ref ttl) => {
                 if self.created_at.elapsed() > *ttl {

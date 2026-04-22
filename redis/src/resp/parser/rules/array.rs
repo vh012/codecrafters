@@ -6,12 +6,12 @@ use crate::resp::{
         types::{BoxedRespParseRule, ParseRule, RespParseRule, RespRuleParseError},
         utils::{get_end_seq_len, is_end_seq},
     },
-    types::RespDataType,
+    types::RespType,
 };
 
 #[derive(Debug)]
 pub(crate) struct ArraysParseRule {
-    values: Vec<RespDataType>,
+    values: Vec<RespType>,
     size: Option<usize>,
     current_parse_rule: Option<BoxedRespParseRule>,
 }
@@ -32,7 +32,7 @@ impl ArraysParseRule {
     fn parse_next_rule(
         &mut self,
         bytes: &mut BytesMut,
-    ) -> Result<Option<RespDataType>, RespRuleParseError> {
+    ) -> Result<Option<RespType>, RespRuleParseError> {
         if self.get_size() < 1 {
             return Ok(None);
         }
@@ -50,7 +50,7 @@ impl ArraysParseRule {
             }
         }
 
-        let rule_parse_result: Option<RespDataType> = self
+        let rule_parse_result: Option<RespType> = self
             .current_parse_rule
             .as_mut()
             .ok_or(RespRuleParseError::UnexpectedSubruleParseError(
@@ -70,7 +70,7 @@ impl ArraysParseRule {
 }
 
 impl ParseRule for ArraysParseRule {
-    type Output = RespDataType;
+    type Output = RespType;
 
     fn next(&mut self, bytes: &mut BytesMut) -> Result<Option<Self::Output>, RespRuleParseError> {
         if self.size.is_none() {
@@ -107,8 +107,8 @@ impl ParseRule for ArraysParseRule {
             self.values.push(parse_result);
         }
 
-        if self.get_size() <= 0 {
-            return Ok(Some(RespDataType::Arrays(Some(self.values.to_vec()))));
+        if self.get_size() == 0 {
+            return Ok(Some(RespType::Array(Some(self.values.to_vec()))));
         }
 
         Ok(None)
